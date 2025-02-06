@@ -27,6 +27,7 @@
 namespace stoat::eval {
     namespace {
         constexpr Score kKingRingPieceScale = 8;
+        constexpr Score kKingTropismScale = 4;
         constexpr Score kRooksForwardMobilityBonus = 20;
 
         [[nodiscard]] Score evalMaterial(const Position& pos, Color c) {
@@ -81,7 +82,27 @@ namespace stoat::eval {
 
             const auto filled = 8.0 * std::min(kingRingPieceCount / kingRingSquareCount, 0.75);
 
-            return kKingRingPieceScale * static_cast<i32>(std::pow(filled, 1.6));
+            Score tropism = 0;
+
+            for (const auto piece :
+                 {PieceTypes::kPromotedLance,
+                  PieceTypes::kPromotedKnight,
+                  PieceTypes::kSilver,
+                  PieceTypes::kPromotedSilver,
+                  PieceTypes::kGold,
+                  PieceTypes::kBishop,
+                  PieceTypes::kRook,
+                  PieceTypes::kPromotedBishop,
+                  PieceTypes::kPromotedRook})
+            {
+                auto pieces = pos.pieceBb(piece, c.flip());
+                while (!pieces.empty()) {
+                    const auto sq = pieces.popLsb();
+                    tropism += 8 - Square::chebyshev(pos.king(c), sq);
+                }
+            }
+
+            return kKingRingPieceScale * static_cast<i32>(std::pow(filled, 1.6)) - kKingTropismScale * tropism;
         }
 
         [[nodiscard]] Score evalRook(const Position& pos, Color c) {
